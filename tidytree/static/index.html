@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TidyTree | Directory Optimizer</title>
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="app.js" defer></script>
+</head>
+<body>
+    <div class="glass-bg"></div>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="brand">
+                <div class="logo-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M22 10V15C22 20 20 22 15 22H9C4 22 2 20 2 15V9C2 4 4 2 9 2H14" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M22 10H18C15 10 14 9 14 6V2L22 10Z" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M7 13H13M7 17H11" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <svg width="0" height="0">
+                        <defs>
+                            <linearGradient id="logo-grad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                                <stop offset="0%" stop-color="#a855f7"/>
+                                <stop offset="100%" stop-color="#6366f1"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <h1>TidyTree</h1>
+                <span class="badge">Advisory Engine v0.1.0</span>
+            </div>
+            <div class="safety-banner">
+                <span class="shield-icon">🛡️</span>
+                <span><strong>Read-Only Mode:</strong> Your actual files will never be altered.</span>
+            </div>
+        </header>
+
+        <!-- Main Dashboard -->
+        <main class="dashboard-grid">
+            <!-- Setup & Controller Card -->
+            <section class="control-panel glass-panel">
+                <h2>Configure Scan</h2>
+                <div class="form-group">
+                    <label for="directory-path">Target Folder Path</label>
+                    <div class="input-with-button">
+                        <input type="text" id="directory-path" placeholder="e.g., /home/user/my_messy_folder" value="sample_disorganized_tree">
+                        <button id="scan-btn" class="primary-btn">
+                            <span class="btn-text">Analyze Structure</span>
+                            <span class="spinner hidden"></span>
+                        </button>
+                    </div>
+                    <p class="input-helper">Scan a messy export folder, developer workspace, or OneNote backup safely.</p>
+                </div>
+                <div class="depth-slider-group">
+                    <div class="slider-header">
+                        <label for="max-depth">Scan Depth limit</label>
+                        <span id="depth-val">5</span>
+                    </div>
+                    <input type="range" id="max-depth" min="1" max="10" value="5">
+                </div>
+                
+                <div class="quick-examples">
+                    <span>Quick Try:</span>
+                    <button class="chip" data-path="sample_disorganized_tree">Sample Disorganized Tree</button>
+                </div>
+            </section>
+
+            <!-- Loading overlay or Error -->
+            <div id="error-box" class="error-panel hidden"></div>
+
+            <!-- Visualization Workspace -->
+            <div class="workspace-views">
+                <!-- Original Tree Card -->
+                <section class="tree-card glass-panel" id="before-card">
+                    <div class="card-header">
+                        <div class="title-with-dot">
+                            <span class="dot red-dot"></span>
+                            <h2>Before Structure</h2>
+                        </div>
+                        <span class="file-count" id="orig-count">0 items</span>
+                    </div>
+                    <div class="tree-scroll-container">
+                        <div id="original-tree-root" class="tree-root">
+                            <p class="placeholder-text">Enter a directory path and click Analyze to view tree.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Suggested Tree Card -->
+                <section class="tree-card glass-panel" id="after-card">
+                    <div class="card-header">
+                        <div class="title-with-dot">
+                            <span class="dot green-dot"></span>
+                            <h2>Suggested Tidy Structure</h2>
+                        </div>
+                        <span class="file-count" id="sug-count">0 items</span>
+                    </div>
+                    <div class="tree-scroll-container">
+                        <div id="suggested-tree-root" class="tree-root">
+                            <p class="placeholder-text">Enter a directory path and click Analyze to view tree.</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Rationales Section -->
+            <section class="rationales-panel glass-panel">
+                <div class="rationales-header">
+                    <h2>Suggested Optimizations</h2>
+                    <span class="badge secondary" id="rationale-count">0 items</span>
+                </div>
+                <div class="table-container">
+                    <table class="rationales-table">
+                        <thead>
+                            <tr>
+                                <th width="10%">Action</th>
+                                <th width="35%">Original Path</th>
+                                <th width="35%">Suggested Path</th>
+                                <th width="20%">Rationale</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rationales-tbody">
+                            <tr>
+                                <td colspan="4" class="table-placeholder">No scan performed yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+</body>
+</html>
