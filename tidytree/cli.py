@@ -43,15 +43,22 @@ def cli():
 @click.option("--path", "-p", required=True, type=click.Path(exists=True, file_okay=False, dir_okay=True), help="Root directory to analyze.")
 @click.option("--format", "-f", type=click.Choice(["text", "json", "markdown"]), default="text", help="Output format.")
 @click.option("--max-depth", "-d", default=5, type=int, help="Maximum scanning depth.")
-def scan(path, format, max_depth):
+@click.option("--taxonomy", "-t", type=click.Choice(["generic", "government", "corporate", "academic"]), default="generic", help="Target organizational structure template.")
+@click.option("--guidance", "-g", help="Over-arching purpose or structural guidelines for semantic sorting.")
+def scan(path, format, max_depth, taxonomy, guidance):
     """Safely scan and analyze a directory, suggesting optimizations."""
     target_path = Path(path).resolve()
     
     try:
         # Perform scan
         original_tree = perform_scan(str(target_path), max_depth=max_depth)
+        
+        # Load API key if set in environment
+        import os
+        api_key = os.environ.get("GEMINI_API_KEY")
+        
         # Perform analysis
-        tidy_result = analyze_tree(original_tree, str(target_path))
+        tidy_result = analyze_tree(original_tree, str(target_path), taxonomy=taxonomy, custom_guidance=guidance, api_key=api_key)
         
         if format == "json":
             click.echo(tidy_result.model_dump_json(indent=2))

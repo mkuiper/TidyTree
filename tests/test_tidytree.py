@@ -115,5 +115,28 @@ class TestTidyTreeCore(unittest.TestCase):
         # photo.png is a single file in Media category, so it should stay flat
         self.assertIn("photo.png", child_names)
 
+    def test_taxonomy_classification(self):
+        # Create loose files containing government-specific glimpse texts
+        files = [
+            TreeNode(name="draft_bill.txt", path="inbox/draft_bill.txt", is_dir=False, metadata=FileMetadata(size=10, modified_time=0.0, extension=".txt", glimpse="This draft bill outlines the council policy")),
+            TreeNode(name="legal_memo.pdf", path="inbox/legal_memo.pdf", is_dir=False, metadata=FileMetadata(size=10, modified_time=0.0, extension=".pdf", glimpse="Conflicting regional transport act guidelines")),
+            TreeNode(name="invoice_102.xlsx", path="inbox/invoice_102.xlsx", is_dir=False, metadata=FileMetadata(size=10, modified_time=0.0, extension=".xlsx", glimpse="Billing procurement details for public maintenance")),
+            TreeNode(name="budget_procurement.csv", path="inbox/budget_procurement.csv", is_dir=False, metadata=FileMetadata(size=10, modified_time=0.0, extension=".csv", glimpse="Tender expense audit and funding numbers")),
+            TreeNode(name="annual_budget.xlsx", path="inbox/annual_budget.xlsx", is_dir=False, metadata=FileMetadata(size=10, modified_time=0.0, extension=".xlsx", glimpse="")),
+        ]
+        inbox_node = TreeNode(
+            name="inbox",
+            path="inbox",
+            is_dir=True,
+            children=files
+        )
+        rationales = []
+        grouped_node = group_loose_files(inbox_node, rationales, taxonomy="government")
+        child_names = [c.name for c in grouped_node.children]
+        
+        # Verify that government-specific taxonomy folders are created
+        self.assertIn("Policy & Legislation", child_names)
+        self.assertIn("Finance & Procurement", child_names)
+
 if __name__ == "__main__":
     unittest.main()

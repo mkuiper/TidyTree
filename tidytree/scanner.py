@@ -33,6 +33,36 @@ def find_metadata_registries(root_path: Path) -> Dict[str, Dict[str, Any]]:
                 pass
     return registry
 
+def glimpse_file_content(file_path: Path, max_bytes: int = 2048) -> str:
+    """
+    Safely reads the first few KB of a file and extracts printable characters/metadata
+    to perform content classification without external package dependencies.
+    """
+    try:
+        if not file_path.is_file():
+            return ""
+        
+        size = file_path.stat().st_size
+        if size == 0:
+            return ""
+            
+        with open(file_path, "rb") as f:
+            data = f.read(min(max_bytes, size))
+            
+        try:
+            text = data.decode("utf-8")
+            cleaned = "".join(c for c in text if c.isprintable() or c in "\n\r\t")
+            return cleaned[:800].strip()
+        except UnicodeDecodeError:
+            import re
+            words = re.findall(rb'[a-zA-Z0-9\s\-_,\.\(\)\{\}\[\]]{4,}', data)
+            if words:
+                decoded = " ".join(w.decode("ascii", errors="ignore") for w in words)
+                return decoded[:800].strip()
+            return ""
+    except Exception:
+        return ""
+
 def scan_path(root_path: Path, current_path: Path, metadata_registry: Dict[str, Dict[str, Any]], max_depth: int, current_depth: int = 0) -> TreeNode:
     """
     Recursively scan a directory or file and return its TreeNode representation.
@@ -65,12 +95,15 @@ def scan_path(root_path: Path, current_path: Path, metadata_registry: Dict[str, 
             title_override = entry.get("title")
             meta_fields = {k: v for k, v in entry.items() if k not in ("file_id", "filename", "title")}
             
+        glimpse = glimpse_file_content(current_path)
+        
         metadata = FileMetadata(
             size=stat.st_size,
             modified_time=stat.st_mtime,
             extension=ext,
             mime_type=mime,
             title_override=title_override,
+            glimpse=glimpse,
             metadata_fields=meta_fields
         )
         return TreeNode(

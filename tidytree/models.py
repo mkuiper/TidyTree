@@ -7,6 +7,7 @@ class FileMetadata(BaseModel):
     extension: str
     mime_type: Optional[str] = None
     title_override: Optional[str] = None
+    glimpse: Optional[str] = None
     metadata_fields: Optional[Dict[str, Any]] = None
 
 class TreeNode(BaseModel):

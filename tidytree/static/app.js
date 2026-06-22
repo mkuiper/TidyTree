@@ -34,6 +34,10 @@ document.addEventListener("DOMContentLoaded", () => {
     function triggerScan() {
         const path = dirPathInput.value.trim();
         const maxDepth = parseInt(maxDepthInput.value, 10);
+        const taxonomySelect = document.getElementById("taxonomy-select");
+        const guidanceInput = document.getElementById("guidance-input");
+        const taxonomy = taxonomySelect ? taxonomySelect.value : "generic";
+        const customGuidance = guidanceInput ? guidanceInput.value.trim() : "";
 
         if (!path) {
             showError("Please enter a valid directory path.");
@@ -48,7 +52,12 @@ document.addEventListener("DOMContentLoaded", () => {
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({ path, max_depth: maxDepth })
+            body: JSON.stringify({ 
+                path, 
+                max_depth: maxDepth,
+                taxonomy: taxonomy,
+                custom_guidance: customGuidance || null
+            })
         })
         .then(response => {
             if (!response.ok) {

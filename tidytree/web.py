@@ -15,6 +15,8 @@ app = FastAPI(
 class ScanRequest(BaseModel):
     path: str
     max_depth: int = 5
+    taxonomy: str = "generic"
+    custom_guidance: Optional[str] = None
 
 @app.post("/api/scan", response_model=TidyResult)
 def api_scan(request: ScanRequest):
@@ -40,7 +42,18 @@ def api_scan(request: ScanRequest):
     try:
         # Scan and Analyze recursively
         original_tree = perform_scan(str(target_path), max_depth=request.max_depth)
-        tidy_result = analyze_tree(original_tree, str(target_path))
+        
+        # Load API key if set in the environment
+        import os
+        api_key = os.environ.get("GEMINI_API_KEY")
+        
+        tidy_result = analyze_tree(
+            original_tree,
+            str(target_path),
+            taxonomy=request.taxonomy,
+            custom_guidance=request.custom_guidance,
+            api_key=api_key
+        )
         return tidy_result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")

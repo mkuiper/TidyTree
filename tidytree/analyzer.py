@@ -163,16 +163,195 @@ def resolve_stratus_exports(node: TreeNode, root_fs_path: Path, rationales: List
     node.children = [resolve_stratus_exports(c, root_fs_path, rationales) for c in node.children or []]
     return node
 
-def group_loose_files(node: TreeNode, rationales: List[Rationale]) -> TreeNode:
+TAXONOMIES = {
+    "generic": {
+        "description": "General purpose categorization based on file types.",
+        "categories": {
+            "Documents": ["pdf", "docx", "doc", "txt", "rtf", "odt", "pages", "md", "letter", "memo", "report"],
+            "Data & Sheets": ["xlsx", "xls", "csv", "tsv", "json", "xml", "yaml", "yml", "database", "sql"],
+            "Media": ["jpg", "jpeg", "png", "gif", "mp4", "mov", "avi", "mp3", "wav", "svg", "logo", "photo", "video"],
+            "Source Code": ["py", "js", "ts", "html", "css", "c", "cpp", "java", "go", "sh", "rs", "sql", "code", "dev"],
+            "Archives": ["zip", "tar", "gz", "rar", "7z", "backup", "archive"]
+        }
+    },
+    "government": {
+        "description": "Public sector and municipal architecture.",
+        "categories": {
+            "Policy & Legislation": ["policy", "legislation", "act", "bill", "council", "regulation", "law", "statute", "draft", "compliance", "legal", "resolution", "committee"],
+            "Operations & Public Services": ["public", "service", "infrastructure", "operations", "utility", "permit", "application", "transit", "water", "waste", "road", "maintenance", "transport", "project"],
+            "Finance & Procurement": ["budget", "finance", "audit", "procurement", "tender", "contract", "invoice", "billing", "grant", "funding", "expense", "purchase", "tax"],
+            "Administration & HR": ["hr", "personnel", "staff", "payroll", "admin", "recruitment", "training", "benefit", "handbook", "onboarding", "leave"],
+            "Communications & Relations": ["pr", "press", "media", "release", "newsletter", "public relations", "citizen", "feedback", "notice", "announcement", "publicity"]
+        }
+    },
+    "corporate": {
+        "description": "Standard business division layout.",
+        "categories": {
+            "Finance & Legal": ["finance", "legal", "invoice", "receipt", "tax", "audit", "contract", "agreement", "corporate", "budget", "nda", "billing", "compliance"],
+            "Human Resources": ["hr", "staff", "payroll", "resume", "cv", "hiring", "review", "training", "benefits", "policy", "employee", "handbook"],
+            "Marketing & Sales": ["marketing", "sales", "pr", "campaign", "ad", "social", "pitch", "lead", "proposal", "client", "customer", "leads"],
+            "Product & Operations": ["product", "ops", "roadmap", "spec", "design", "feedback", "inventory", "shipping", "process", "manual", "strategy"],
+            "Engineering & Tech": ["code", "dev", "api", "tech", "infrastructure", "deployment", "script", "database", "security", "bug", "software"]
+        }
+    },
+    "academic": {
+        "description": "Education and research architecture.",
+        "categories": {
+            "Research & Publications": ["research", "paper", "journal", "draft", "abstract", "proposal", "grant", "citation", "bibliography", "data", "experiment", "thesis", "dissertation"],
+            "Teaching & Courses": ["course", "syllabus", "lecture", "slide", "homework", "exam", "quiz", "grade", "assignment", "tutorial", "reading", "lesson"],
+            "Administration & Departmental": ["admin", "faculty", "minutes", "committee", "budget", "policy", "memo", "schedule", "board", "meeting"],
+            "Student Portfolios & Submissions": ["student", "portfolio", "submission", "project", "presentation", "grades"]
+        }
+    }
+}
+
+def classify_local(name: str, glimpse: str, taxonomy_name: str) -> str:
     """
-    Groups loose files into standard folders based on extensions if folder is disorganized.
+    Local keyword scoring classifier to route loose files matching a target taxonomy.
+    """
+    taxonomy_name = taxonomy_name.lower()
+    if taxonomy_name not in TAXONOMIES:
+        taxonomy_name = "generic"
+        
+    taxonomy = TAXONOMIES[taxonomy_name]
+    scores = {}
+    
+    name_lower = name.lower()
+    glimpse_lower = glimpse.lower()
+    
+    # Tokenize words to avoid partial matching of short keywords (e.g. 'c' matching 'sheet2.csv')
+    import re
+    name_words = set(re.findall(r'[a-zA-Z0-9]+', name_lower))
+    glimpse_words = set(re.findall(r'[a-zA-Z0-9]+', glimpse_lower))
+    
+    for cat_name, keywords in taxonomy["categories"].items():
+        score = 0
+        for kw in keywords:
+            kw_lower = kw.lower()
+            if len(kw_lower) <= 2:
+                # Exact word matching for short keywords
+                if kw_lower in name_words:
+                    score += 10
+                if kw_lower in glimpse_words:
+                    score += 2
+            else:
+                # Substring matching for longer keywords
+                if kw_lower in name_lower:
+                    score += 10
+                if kw_lower in glimpse_lower:
+                    score += 2
+        scores[cat_name] = score
+        
+    max_cat = max(scores, key=scores.get)
+    if scores[max_cat] > 0:
+        return max_cat
+        
+    # Extension fallback mapping
+    ext = Path(name).suffix.lower()
+    generic_cat = None
+    for gen_cat, exts in TAXONOMIES["generic"]["categories"].items():
+        if ext[1:] in exts or ext in exts:
+            generic_cat = gen_cat
+            break
+            
+    if generic_cat:
+        if taxonomy_name == "generic":
+            return generic_cat
+            
+        if taxonomy_name == "government":
+            mapping = {
+                "Documents": "Policy & Legislation",
+                "Data & Sheets": "Finance & Procurement",
+                "Media": "Communications & Relations",
+                "Source Code": "Operations & Public Services",
+                "Archives": "Operations & Public Services"
+            }
+            return mapping.get(generic_cat, "Policy & Legislation")
+        elif taxonomy_name == "corporate":
+            mapping = {
+                "Documents": "Product & Operations",
+                "Data & Sheets": "Finance & Legal",
+                "Media": "Marketing & Sales",
+                "Source Code": "Engineering & Tech",
+                "Archives": "Product & Operations"
+            }
+            return mapping.get(generic_cat, "Product & Operations")
+        elif taxonomy_name == "academic":
+            mapping = {
+                "Documents": "Research & Publications",
+                "Data & Sheets": "Research & Publications",
+                "Media": "Teaching & Courses",
+                "Source Code": "Research & Publications",
+                "Archives": "Administration & Departmental"
+            }
+            return mapping.get(generic_cat, "Research & Publications")
+
+    return list(taxonomy["categories"].keys())[0]
+
+def classify_with_gemini(files_info: List[Dict[str, str]], guidance: str, api_key: str) -> Optional[Dict[str, Any]]:
+    """
+    Call the Gemini API to get a semantically classified tree structures mapping.
+    """
+    import urllib.request
+    import json
+    
+    prompt = (
+        f"You are an AI directory classification assistant. Organize the listed files to match this purpose/guidance: '{guidance}'.\n"
+        "Instructions:\n"
+        "1. For each file, decide which logical folder it belongs to. Do not suggest deep nesting (limit directories to 2 levels maximum).\n"
+        "2. Keep filenames clean but you may rename them slightly if they are chaotic (do not alter extensions).\n"
+        "3. Provide your output strictly as a JSON object matching this structure:\n"
+        "{\n"
+        "  \"relocations\": [\n"
+        "    {\n"
+        "      \"original_path\": \"original path of the file\",\n"
+        "      \"suggested_category\": \"folder name (e.g. Policy & Legislation)\",\n"
+        "      \"suggested_name\": \"new filename (keep same as original unless chaotic)\",\n"
+        "      \"reasoning\": \"brief explanation of why this file fits the category\"\n"
+        "    }\n"
+        "  ]\n"
+        "}\n\n"
+        "Files to organize:\n"
+    )
+    
+    for idx, f in enumerate(files_info):
+        prompt += f"{idx+1}. Path: '{f['path']}' | Content preview: {f['glimpse'][:200]}\n"
+        
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    
+    req_body = {
+        "contents": [{
+            "parts": [{"text": prompt}]
+        }],
+        "generationConfig": {
+            "responseMimeType": "application/json"
+        }
+    }
+    
+    try:
+        data = json.dumps(req_body).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=data,
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=20) as response:
+            res_data = json.loads(response.read().decode("utf-8"))
+            text = res_data["candidates"][0]["content"]["parts"][0]["text"]
+            return json.loads(text)
+    except Exception as e:
+        print("Gemini API classification failed:", e)
+        return None
+
+def group_loose_files(node: TreeNode, rationales: List[Rationale], taxonomy: str = "generic", custom_guidance: Optional[str] = None, api_key: Optional[str] = None) -> TreeNode:
+    """
+    Groups loose files matching built-in or AI-guided taxonomies.
     """
     if not node.is_dir or not node.children:
         return node
         
-    node.children = [group_loose_files(c, rationales) for c in node.children]
+    node.children = [group_loose_files(c, rationales, taxonomy, custom_guidance, api_key) for c in node.children]
     
-    # Don't group OneNote attachments folders (they are deliberately grouped with notes)
     if node.name.endswith("_Attachments") or node.name.endswith(" Attachments"):
         return node
         
@@ -182,28 +361,92 @@ def group_loose_files(node: TreeNode, rationales: List[Rationale]) -> TreeNode:
     if len(files) <= 3:
         return node
         
-    categorized_files = {}
-    unclassified_files = []
+    # Check if Gemini AI classification is available
+    if api_key:
+        files_info = []
+        for f in files:
+            files_info.append({
+                "path": f.path,
+                "name": f.name,
+                "glimpse": f.metadata.glimpse if (f.metadata and f.metadata.glimpse) else ""
+            })
+            
+        guidance = custom_guidance or TAXONOMIES.get(taxonomy, TAXONOMIES["generic"])["description"]
+        ai_res = classify_with_gemini(files_info, guidance, api_key)
+        
+        if ai_res and "relocations" in ai_res:
+            cat_folders = {}
+            unclassified = []
+            reloc_map = {r["original_path"]: r for r in ai_res["relocations"]}
+            
+            for f in files:
+                rel = reloc_map.get(f.path)
+                if rel:
+                    cat = rel.get("suggested_category", "Documents").strip()
+                    sug_name = rel.get("suggested_name", f.name).strip()
+                    reason = rel.get("reasoning", "Classified semantically by AI.")
+                    
+                    if sug_name and sug_name != f.name:
+                        f.name = sug_name
+                        if f.metadata:
+                            f.metadata.title_override = sug_name
+                            
+                    if cat not in cat_folders:
+                        cat_folders[cat] = []
+                    cat_folders[cat].append(f)
+                    
+                    rationales.append(Rationale(
+                        action="GROUP",
+                        original_path=f.original_path or f.path,
+                        suggested_path="",
+                        reasoning=reason
+                    ))
+                else:
+                    unclassified.append(f)
+                    
+            new_children = list(folders) + unclassified
+            for cat, cat_files in cat_folders.items():
+                if len(cat_files) == 1:
+                    new_children.append(cat_files[0])
+                    rationales[:] = [r for r in rationales if r.original_path != cat_files[0].original_path]
+                    continue
+                    
+                cat_folder = TreeNode(
+                    name=cat,
+                    path=f"{node.path}/{cat}" if node.path else cat,
+                    original_path=node.original_path or node.path,
+                    is_dir=True,
+                    children=cat_files
+                )
+                new_children.append(cat_folder)
+                
+            node.children = new_children
+            return node
+
+    # Local Rule-based Taxonomy Classifier Fallback
+    cat_folders = {}
+    unclassified = []
     
     for f in files:
-        ext = f.metadata.extension if f.metadata else ""
-        cat = get_category(ext)
-        if cat:
-            if cat not in categorized_files:
-                categorized_files[cat] = []
-            categorized_files[cat].append(f)
-        else:
-            unclassified_files.append(f)
-            
-    # Only perform grouping if they belong to at least 2 categories or one category has >3 files
-    if len(categorized_files) < 2 and not any(len(lst) > 3 for lst in categorized_files.values()):
-        return node
+        glimpse = f.metadata.glimpse if (f.metadata and f.metadata.glimpse) else ""
+        cat = classify_local(f.name, glimpse, taxonomy)
         
-    new_children = list(folders) + unclassified_files
-    
-    for cat, cat_files in categorized_files.items():
+        if cat not in cat_folders:
+            cat_folders[cat] = []
+        cat_folders[cat].append(f)
+        
+        rationales.append(Rationale(
+            action="GROUP",
+            original_path=f.original_path or f.path,
+            suggested_path="",
+            reasoning=f"Grouped loose file '{f.name}' under category '{cat}' matching the target taxonomy."
+        ))
+        
+    new_children = list(folders) + unclassified
+    for cat, cat_files in cat_folders.items():
         if len(cat_files) == 1:
             new_children.append(cat_files[0])
+            rationales[:] = [r for r in rationales if r.original_path != cat_files[0].original_path]
             continue
             
         cat_folder = TreeNode(
@@ -215,14 +458,6 @@ def group_loose_files(node: TreeNode, rationales: List[Rationale]) -> TreeNode:
         )
         new_children.append(cat_folder)
         
-        for f in cat_files:
-            rationales.append(Rationale(
-                action="GROUP",
-                original_path=f.original_path or f.path,
-                suggested_path="",  # Post-processed
-                reasoning=f"Grouped loose file '{f.name}' under category directory '{cat}' to tidy up parent folder."
-            ))
-            
     node.children = new_children
     return node
 
@@ -249,11 +484,10 @@ def build_original_to_final_map(node: TreeNode, path_map: Dict[str, str]):
         for child in node.children:
             build_original_to_final_map(child, path_map)
 
-def analyze_tree(original_tree: TreeNode, target_dir: str) -> TidyResult:
+def analyze_tree(original_tree: TreeNode, target_dir: str, taxonomy: str = "generic", custom_guidance: Optional[str] = None, api_key: Optional[str] = None) -> TidyResult:
     """
     Runs the full analysis pipeline on the tree and returns the TidyResult.
     """
-    # Create deep copy for suggestions
     suggested_tree = original_tree.model_copy(deep=True)
     
     # 1. Initialize original paths
@@ -270,7 +504,7 @@ def analyze_tree(original_tree: TreeNode, target_dir: str) -> TidyResult:
     suggested_tree = resolve_stratus_exports(suggested_tree, root_fs_path, rationales)
     
     # 4. Run Loose Files Grouping Pass
-    suggested_tree = group_loose_files(suggested_tree, rationales)
+    suggested_tree = group_loose_files(suggested_tree, rationales, taxonomy, custom_guidance, api_key)
     
     # 5. Recalculate paths on the new structure
     recalculate_paths(suggested_tree, parent_path="")
