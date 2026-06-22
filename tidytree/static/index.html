@@ -80,7 +80,29 @@
                 <div class="form-group">
                     <label for="guidance-input">Custom Structure Guidance (Optional / AI-Powered)</label>
                     <textarea id="guidance-input" placeholder="e.g. We are a municipal infrastructure department managing water permits and legal board drafts."></textarea>
-                    <p class="input-helper">Semantic context for grouping. Active GEMINI_API_KEY activates AI semantic clustering.</p>
+                    <p class="input-helper">Semantic context for grouping.</p>
+                </div>
+
+                <!-- AI Provider Configuration -->
+                <div class="ai-config-section">
+                    <div class="form-group">
+                        <label for="ai-provider">AI Reorganization Provider</label>
+                        <select id="ai-provider" class="form-select">
+                            <option value="none">None (Local Rules - Offline)</option>
+                            <option value="gemini">Google Gemini</option>
+                            <option value="openai">OpenAI GPT</option>
+                        </select>
+                    </div>
+                    <div id="ai-credentials" class="hidden">
+                        <div class="form-group">
+                            <label for="ai-key">API Key</label>
+                            <input type="password" id="ai-key" placeholder="Paste your API key here">
+                        </div>
+                        <div class="form-group">
+                            <label for="ai-model">Model Name Override (Optional)</label>
+                            <input type="text" id="ai-model" placeholder="e.g. gemini-2.5-flash or gpt-4o-mini">
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="quick-examples">

@@ -31,6 +31,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
     scanBtn.addEventListener("click", triggerScan);
 
+    // Toggle AI Credentials Inputs
+    const aiProviderSelect = document.getElementById("ai-provider");
+    const aiCredentialsDiv = document.getElementById("ai-credentials");
+    const aiKeyInput = document.getElementById("ai-key");
+    const aiModelInput = document.getElementById("ai-model");
+
+    if (aiProviderSelect) {
+        aiProviderSelect.addEventListener("change", (e) => {
+            const provider = e.target.value;
+            if (provider === "none") {
+                aiCredentialsDiv.classList.add("hidden");
+                aiKeyInput.value = "";
+                aiModelInput.value = "";
+            } else {
+                aiCredentialsDiv.classList.remove("hidden");
+                if (provider === "gemini") {
+                    aiModelInput.placeholder = "e.g. gemini-2.5-flash";
+                } else if (provider === "openai") {
+                    aiModelInput.placeholder = "e.g. gpt-4o-mini";
+                }
+            }
+        });
+    }
+
     function triggerScan() {
         const path = dirPathInput.value.trim();
         const maxDepth = parseInt(maxDepthInput.value, 10);
@@ -38,6 +62,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const guidanceInput = document.getElementById("guidance-input");
         const taxonomy = taxonomySelect ? taxonomySelect.value : "generic";
         const customGuidance = guidanceInput ? guidanceInput.value.trim() : "";
+        
+        const aiProvider = aiProviderSelect ? aiProviderSelect.value : "none";
+        const aiKey = aiKeyInput ? aiKeyInput.value.trim() : "";
+        const aiModel = aiModelInput ? aiModelInput.value.trim() : "";
 
         if (!path) {
             showError("Please enter a valid directory path.");
@@ -56,7 +84,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 path, 
                 max_depth: maxDepth,
                 taxonomy: taxonomy,
-                custom_guidance: customGuidance || null
+                custom_guidance: customGuidance || null,
+                ai_provider: aiProvider,
+                ai_api_key: aiKey || null,
+                ai_model: aiModel || null
             })
         })
         .then(response => {

@@ -17,6 +17,9 @@ class ScanRequest(BaseModel):
     max_depth: int = 5
     taxonomy: str = "generic"
     custom_guidance: Optional[str] = None
+    ai_provider: Optional[str] = None
+    ai_api_key: Optional[str] = None
+    ai_model: Optional[str] = None
 
 @app.post("/api/scan", response_model=TidyResult)
 def api_scan(request: ScanRequest):
@@ -43,16 +46,28 @@ def api_scan(request: ScanRequest):
         # Scan and Analyze recursively
         original_tree = perform_scan(str(target_path), max_depth=request.max_depth)
         
-        # Load API key if set in the environment
+        # Load API key and provider from request, fallback to environment keys if none
         import os
-        api_key = os.environ.get("GEMINI_API_KEY")
+        provider = request.ai_provider
+        api_key = request.ai_api_key
+        model = request.ai_model
+        
+        if (not provider or provider == "none") and not api_key:
+            if os.environ.get("GEMINI_API_KEY"):
+                provider = "gemini"
+                api_key = os.environ.get("GEMINI_API_KEY")
+            elif os.environ.get("OPENAI_API_KEY"):
+                provider = "openai"
+                api_key = os.environ.get("OPENAI_API_KEY")
         
         tidy_result = analyze_tree(
             original_tree,
             str(target_path),
             taxonomy=request.taxonomy,
             custom_guidance=request.custom_guidance,
-            api_key=api_key
+            ai_provider=provider,
+            ai_api_key=api_key,
+            ai_model=model
         )
         return tidy_result
     except Exception as e:

@@ -343,14 +343,70 @@ def classify_with_gemini(files_info: List[Dict[str, str]], guidance: str, api_ke
         print("Gemini API classification failed:", e)
         return None
 
-def group_loose_files(node: TreeNode, rationales: List[Rationale], taxonomy: str = "generic", custom_guidance: Optional[str] = None, api_key: Optional[str] = None) -> TreeNode:
+def classify_with_openai(files_info: List[Dict[str, str]], guidance: str, api_key: str, model: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """
-    Groups loose files matching built-in or AI-guided taxonomies.
+    Call the OpenAI API to get a semantically classified tree structures mapping.
+    """
+    import urllib.request
+    import json
+    
+    prompt = (
+        f"You are an AI directory classification assistant. Organize the listed files to match this purpose/guidance: '{guidance}'.\n"
+        "Instructions:\n"
+        "1. For each file, decide which logical folder it belongs to. Do not suggest deep nesting (limit directories to 2 levels maximum).\n"
+        "2. Keep filenames clean but you may rename them slightly if they are chaotic (do not alter extensions).\n"
+        "3. Provide your output strictly as a JSON object matching this structure:\n"
+        "{\n"
+        "  \"relocations\": [\n"
+        "    {\n"
+        "      \"original_path\": \"original path of the file\",\n"
+        "      \"suggested_category\": \"folder name (e.g. Policy & Legislation)\",\n"
+        "      \"suggested_name\": \"new filename (keep same as original unless chaotic)\",\n"
+        "      \"reasoning\": \"brief explanation of why this file fits the category\"\n"
+        "    }\n"
+        "  ]\n"
+        "}\n\n"
+        "Files to organize:\n"
+    )
+    
+    for idx, f in enumerate(files_info):
+        prompt += f"{idx+1}. Path: '{f['path']}' | Content preview: {f['glimpse'][:200]}\n"
+        
+    url = "https://api.openai.com/v1/chat/completions"
+    model_name = model if model else "gpt-4o-mini"
+    
+    req_body = {
+        "model": model_name,
+        "messages": [{"role": "user", "content": prompt}],
+        "response_format": {"type": "json_object"}
+    }
+    
+    try:
+        data = json.dumps(req_body).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=data,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}"
+            }
+        )
+        with urllib.request.urlopen(req, timeout=25) as response:
+            res_data = json.loads(response.read().decode("utf-8"))
+            text = res_data["choices"][0]["message"]["content"]
+            return json.loads(text)
+    except Exception as e:
+        print("OpenAI API classification failed:", e)
+        return None
+
+def group_loose_files(node: TreeNode, rationales: List[Rationale], taxonomy: str = "generic", custom_guidance: Optional[str] = None, ai_provider: Optional[str] = None, ai_api_key: Optional[str] = None, ai_model: Optional[str] = None) -> TreeNode:
+    """
+    Groups loose files matching built-in or AI-guided taxonomies (supporting Gemini & OpenAI).
     """
     if not node.is_dir or not node.children:
         return node
         
-    node.children = [group_loose_files(c, rationales, taxonomy, custom_guidance, api_key) for c in node.children]
+    node.children = [group_loose_files(c, rationales, taxonomy, custom_guidance, ai_provider, ai_api_key, ai_model) for c in node.children]
     
     if node.name.endswith("_Attachments") or node.name.endswith(" Attachments"):
         return node
@@ -361,8 +417,8 @@ def group_loose_files(node: TreeNode, rationales: List[Rationale], taxonomy: str
     if len(files) <= 3:
         return node
         
-    # Check if Gemini AI classification is available
-    if api_key:
+    # Check if AI classification is available
+    if ai_api_key and ai_provider and ai_provider != "none":
         files_info = []
         for f in files:
             files_info.append({
@@ -372,8 +428,13 @@ def group_loose_files(node: TreeNode, rationales: List[Rationale], taxonomy: str
             })
             
         guidance = custom_guidance or TAXONOMIES.get(taxonomy, TAXONOMIES["generic"])["description"]
-        ai_res = classify_with_gemini(files_info, guidance, api_key)
         
+        ai_res = None
+        if ai_provider == "gemini":
+            ai_res = classify_with_gemini(files_info, guidance, ai_api_key)
+        elif ai_provider == "openai":
+            ai_res = classify_with_openai(files_info, guidance, ai_api_key, model=ai_model)
+            
         if ai_res and "relocations" in ai_res:
             cat_folders = {}
             unclassified = []
@@ -484,7 +545,7 @@ def build_original_to_final_map(node: TreeNode, path_map: Dict[str, str]):
         for child in node.children:
             build_original_to_final_map(child, path_map)
 
-def analyze_tree(original_tree: TreeNode, target_dir: str, taxonomy: str = "generic", custom_guidance: Optional[str] = None, api_key: Optional[str] = None) -> TidyResult:
+def analyze_tree(original_tree: TreeNode, target_dir: str, taxonomy: str = "generic", custom_guidance: Optional[str] = None, ai_provider: Optional[str] = None, ai_api_key: Optional[str] = None, ai_model: Optional[str] = None) -> TidyResult:
     """
     Runs the full analysis pipeline on the tree and returns the TidyResult.
     """
@@ -504,7 +565,7 @@ def analyze_tree(original_tree: TreeNode, target_dir: str, taxonomy: str = "gene
     suggested_tree = resolve_stratus_exports(suggested_tree, root_fs_path, rationales)
     
     # 4. Run Loose Files Grouping Pass
-    suggested_tree = group_loose_files(suggested_tree, rationales, taxonomy, custom_guidance, api_key)
+    suggested_tree = group_loose_files(suggested_tree, rationales, taxonomy, custom_guidance, ai_provider, ai_api_key, ai_model)
     
     # 5. Recalculate paths on the new structure
     recalculate_paths(suggested_tree, parent_path="")

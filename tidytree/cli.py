@@ -45,7 +45,10 @@ def cli():
 @click.option("--max-depth", "-d", default=5, type=int, help="Maximum scanning depth.")
 @click.option("--taxonomy", "-t", type=click.Choice(["generic", "government", "corporate", "academic"]), default="generic", help="Target organizational structure template.")
 @click.option("--guidance", "-g", help="Over-arching purpose or structural guidelines for semantic sorting.")
-def scan(path, format, max_depth, taxonomy, guidance):
+@click.option("--provider", type=click.Choice(["none", "gemini", "openai"]), default="none", help="AI provider to use for semantic sorting.")
+@click.option("--api-key", help="API Key for the chosen AI provider.")
+@click.option("--model", help="AI model name override (e.g. gpt-4o-mini).")
+def scan(path, format, max_depth, taxonomy, guidance, provider, api_key, model):
     """Safely scan and analyze a directory, suggesting optimizations."""
     target_path = Path(path).resolve()
     
@@ -53,12 +56,30 @@ def scan(path, format, max_depth, taxonomy, guidance):
         # Perform scan
         original_tree = perform_scan(str(target_path), max_depth=max_depth)
         
-        # Load API key if set in environment
+        # Load API key and provider from inputs, fallback to environment keys if none
         import os
-        api_key = os.environ.get("GEMINI_API_KEY")
+        ai_provider = provider
+        ai_api_key = api_key
+        ai_model = model
+        
+        if (not ai_provider or ai_provider == "none") and not ai_api_key:
+            if os.environ.get("GEMINI_API_KEY"):
+                ai_provider = "gemini"
+                ai_api_key = os.environ.get("GEMINI_API_KEY")
+            elif os.environ.get("OPENAI_API_KEY"):
+                ai_provider = "openai"
+                ai_api_key = os.environ.get("OPENAI_API_KEY")
         
         # Perform analysis
-        tidy_result = analyze_tree(original_tree, str(target_path), taxonomy=taxonomy, custom_guidance=guidance, api_key=api_key)
+        tidy_result = analyze_tree(
+            original_tree,
+            str(target_path),
+            taxonomy=taxonomy,
+            custom_guidance=guidance,
+            ai_provider=ai_provider,
+            ai_api_key=ai_api_key,
+            ai_model=ai_model
+        )
         
         if format == "json":
             click.echo(tidy_result.model_dump_json(indent=2))
