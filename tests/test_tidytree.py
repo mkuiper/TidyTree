@@ -3,6 +3,7 @@ import unittest
 import tempfile
 import json
 from pathlib import Path
+from unittest.mock import patch, MagicMock
 from tidytree.models import TreeNode, FileMetadata, Rationale
 from tidytree.scanner import perform_scan, find_metadata_registries
 from tidytree.dotenv_loader import load_dotenv
@@ -171,6 +172,36 @@ class TestTidyTreeCore(unittest.TestCase):
         os.environ.pop("TEST_VAR_ONE", None)
         os.environ.pop("TEST_VAR_TWO", None)
         os.environ.pop("TEST_VAR_THREE", None)
+
+    @patch("urllib.request.urlopen")
+    def test_classify_with_anthropic(self, mock_urlopen):
+        from tidytree.analyzer import classify_with_anthropic
+        
+        # Mock Response
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({
+            "content": [{
+                "text": json.dumps({
+                    "relocations": [
+                        {
+                            "original_path": "inbox/doc1.pdf",
+                            "suggested_category": "Documents",
+                            "suggested_name": "doc1.pdf",
+                            "reasoning": "Fits perfectly"
+                        }
+                    ]
+                })
+            }]
+        }).encode("utf-8")
+        
+        mock_urlopen.return_value.__enter__.return_value = mock_response
+        
+        files_info = [{"path": "inbox/doc1.pdf", "name": "doc1.pdf", "glimpse": ""}]
+        res = classify_with_anthropic(files_info, "Guidance", "mock-key")
+        
+        self.assertIsNotNone(res)
+        self.assertEqual(len(res["relocations"]), 1)
+        self.assertEqual(res["relocations"][0]["original_path"], "inbox/doc1.pdf")
 
 if __name__ == "__main__":
     unittest.main()

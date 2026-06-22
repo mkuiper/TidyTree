@@ -48,7 +48,7 @@ def cli():
 @click.option("--max-depth", "-d", default=5, type=int, help="Maximum scanning depth.")
 @click.option("--taxonomy", "-t", type=click.Choice(["generic", "government", "corporate", "academic"]), default="generic", help="Target organizational structure template.")
 @click.option("--guidance", "-g", help="Over-arching purpose or structural guidelines for semantic sorting.")
-@click.option("--provider", type=click.Choice(["none", "gemini", "openai"]), default="none", help="AI provider to use for semantic sorting.")
+@click.option("--provider", type=click.Choice(["none", "gemini", "openai", "anthropic"]), default="none", help="AI provider to use for semantic sorting.")
 @click.option("--api-key", help="API Key for the chosen AI provider.")
 @click.option("--model", help="AI model name override (e.g. gpt-4o-mini).")
 def scan(path, format, max_depth, taxonomy, guidance, provider, api_key, model):
@@ -72,6 +72,8 @@ def scan(path, format, max_depth, taxonomy, guidance, provider, api_key, model):
                 ai_api_key = os.environ.get("GEMINI_API_KEY")
             elif ai_provider == "openai":
                 ai_api_key = os.environ.get("OPENAI_API_KEY")
+            elif ai_provider == "anthropic":
+                ai_api_key = os.environ.get("ANTHROPIC_API_KEY")
             elif not ai_provider or ai_provider == "none":
                 if os.environ.get("GEMINI_API_KEY"):
                     ai_provider = "gemini"
@@ -79,6 +81,9 @@ def scan(path, format, max_depth, taxonomy, guidance, provider, api_key, model):
                 elif os.environ.get("OPENAI_API_KEY"):
                     ai_provider = "openai"
                     ai_api_key = os.environ.get("OPENAI_API_KEY")
+                elif os.environ.get("ANTHROPIC_API_KEY"):
+                    ai_provider = "anthropic"
+                    ai_api_key = os.environ.get("ANTHROPIC_API_KEY")
         
         # Perform analysis
         tidy_result = analyze_tree(

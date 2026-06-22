@@ -62,6 +62,8 @@ def api_scan(request: ScanRequest):
                 api_key = os.environ.get("GEMINI_API_KEY")
             elif provider == "openai":
                 api_key = os.environ.get("OPENAI_API_KEY")
+            elif provider == "anthropic":
+                api_key = os.environ.get("ANTHROPIC_API_KEY")
             elif not provider or provider == "none":
                 if os.environ.get("GEMINI_API_KEY"):
                     provider = "gemini"
@@ -69,6 +71,9 @@ def api_scan(request: ScanRequest):
                 elif os.environ.get("OPENAI_API_KEY"):
                     provider = "openai"
                     api_key = os.environ.get("OPENAI_API_KEY")
+                elif os.environ.get("ANTHROPIC_API_KEY"):
+                    provider = "anthropic"
+                    api_key = os.environ.get("ANTHROPIC_API_KEY")
         
         tidy_result = analyze_tree(
             original_tree,

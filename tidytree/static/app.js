@@ -92,11 +92,53 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Toggle AI Credentials Inputs
+    // Toggle AI Credentials Inputs & Populate Models
     const aiProviderSelect = document.getElementById("ai-provider");
     const aiCredentialsDiv = document.getElementById("ai-credentials");
     const aiKeyInput = document.getElementById("ai-key");
-    const aiModelInput = document.getElementById("ai-model");
+    const aiModelSelect = document.getElementById("ai-model-select");
+    const customModelGroup = document.getElementById("custom-model-group");
+    const aiModelCustom = document.getElementById("ai-model-custom");
+
+    const PROVIDER_MODELS = {
+        "gemini": [
+            { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash (Recommended)" },
+            { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+            { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
+            { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
+            { value: "custom", label: "Custom Model Name..." }
+        ],
+        "openai": [
+            { value: "gpt-4o-mini", label: "GPT-4o Mini (Recommended)" },
+            { value: "gpt-4o", label: "GPT-4o" },
+            { value: "o3-mini", label: "o3 Mini" },
+            { value: "o1-mini", label: "o1 Mini" },
+            { value: "o1-preview", label: "o1 Preview" },
+            { value: "custom", label: "Custom Model Name..." }
+        ],
+        "anthropic": [
+            { value: "claude-3-5-sonnet-latest", label: "Claude 3.5 Sonnet (Recommended)" },
+            { value: "claude-3-5-haiku-latest", label: "Claude 3.5 Haiku" },
+            { value: "claude-3-opus-latest", label: "Claude 3 Opus" },
+            { value: "custom", label: "Custom Model Name..." }
+        ]
+    };
+
+    function populateModels(provider) {
+        if (!aiModelSelect) return;
+        aiModelSelect.innerHTML = "";
+        
+        const models = PROVIDER_MODELS[provider] || [];
+        models.forEach(model => {
+            const opt = document.createElement("option");
+            opt.value = model.value;
+            opt.textContent = model.label;
+            aiModelSelect.appendChild(opt);
+        });
+        
+        // Trigger select change to update custom input visibility
+        aiModelSelect.dispatchEvent(new Event("change"));
+    }
 
     if (aiProviderSelect) {
         aiProviderSelect.addEventListener("change", (e) => {
@@ -104,17 +146,27 @@ document.addEventListener("DOMContentLoaded", () => {
             if (provider === "none") {
                 aiCredentialsDiv.classList.add("hidden");
                 aiKeyInput.value = "";
-                aiModelInput.value = "";
+                if (aiModelSelect) aiModelSelect.innerHTML = "";
+                if (customModelGroup) customModelGroup.classList.add("hidden");
+                if (aiModelCustom) aiModelCustom.value = "";
             } else {
                 aiCredentialsDiv.classList.remove("hidden");
-                if (provider === "gemini") {
-                    aiModelInput.placeholder = "e.g. gemini-2.5-flash";
-                } else if (provider === "openai") {
-                    aiModelInput.placeholder = "e.g. gpt-4o-mini";
-                }
+                populateModels(provider);
             }
         });
     }
+
+    if (aiModelSelect) {
+        aiModelSelect.addEventListener("change", (e) => {
+            if (e.target.value === "custom") {
+                if (customModelGroup) customModelGroup.classList.remove("hidden");
+            } else {
+                if (customModelGroup) customModelGroup.classList.add("hidden");
+                if (aiModelCustom) aiModelCustom.value = "";
+            }
+        });
+    }
+
 
     // Search Input Real-Time Filter Listener
     if (searchInput) {
@@ -136,7 +188,15 @@ document.addEventListener("DOMContentLoaded", () => {
         
         const aiProvider = aiProviderSelect ? aiProviderSelect.value : "none";
         const aiKey = aiKeyInput ? aiKeyInput.value.trim() : "";
-        const aiModel = aiModelInput ? aiModelInput.value.trim() : "";
+        
+        let aiModel = "";
+        if (aiProvider !== "none" && aiModelSelect) {
+            if (aiModelSelect.value === "custom") {
+                aiModel = aiModelCustom ? aiModelCustom.value.trim() : "";
+            } else {
+                aiModel = aiModelSelect.value;
+            }
+        }
 
         if (!path) {
             showError("Please enter a valid directory path.");

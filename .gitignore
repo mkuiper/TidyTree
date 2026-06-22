@@ -11,3 +11,8 @@ wheels/
 
 # Test fixtures
 sample_disorganized_tree/
+
+# Environment configurations
+.env
+*.env
+

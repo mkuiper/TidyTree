@@ -89,8 +89,8 @@ The Analyzer runs the scanned tree through three main simplification pipelines:
 
 ## 4. Environment & API Key Resolution (`dotenv_loader.py`)
 
-To simplify API key configuration when utilizing Google Gemini or OpenAI GPT models for advanced sorting:
-- **Automatic `.env` Discovery**: TidyTree checks for a `.env` file containing API keys (`GEMINI_API_KEY`, `OPENAI_API_KEY`) at three levels:
+To simplify API key configuration when utilizing Google Gemini, OpenAI GPT, or Anthropic Claude models for advanced sorting:
+- **Automatic `.env` Discovery**: TidyTree checks for a `.env` file containing API keys (`GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`) at three levels:
   1. The target folder being scanned.
   2. The current working directory (CWD) where the application is executed.
   3. The workspace root folder (containing `main.py`).

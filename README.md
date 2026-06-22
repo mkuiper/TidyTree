@@ -74,16 +74,16 @@ Run scans and get structure reports directly in your terminal.
 ```
 
 #### AI Reorganization with Custom Guidance
-If you have an API key set, you can run semantic, context-aware reorganization:
+If you have an API key set, you can run semantic, context-aware reorganization using Google Gemini, OpenAI GPT, or Anthropic Claude:
 ```bash
-.venv/bin/python main.py scan -p sample_disorganized_tree -g "We are a municipal team managing permits and act revisions." --provider gemini
+.venv/bin/python main.py scan -p sample_disorganized_tree -g "We are a municipal team managing permits and act revisions." --provider anthropic
 ```
 
 ---
 
 ### 2. API Key Configuration (`.env`)
 
-You can supply API keys for Google Gemini or OpenAI GPT models using a `.env` file. TidyTree automatically searches for a `.env` file in:
+You can supply API keys for Google Gemini, OpenAI GPT, or Anthropic Claude models using a `.env` file. TidyTree automatically searches for a `.env` file in:
 1. The target directory being scanned.
 2. The current working directory (CWD).
 3. The root of the TidyTree workspace.
@@ -92,6 +92,7 @@ Example `.env` content:
 ```env
 GEMINI_API_KEY=your_google_gemini_api_key_here
 OPENAI_API_KEY=your_openai_api_key_here
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
 ```
 
 ---

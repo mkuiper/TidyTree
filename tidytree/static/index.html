@@ -94,6 +94,7 @@
                             <option value="none">None (Local Rules - Offline)</option>
                             <option value="gemini">Google Gemini</option>
                             <option value="openai">OpenAI GPT</option>
+                            <option value="anthropic">Anthropic Claude</option>
                         </select>
                     </div>
                     <div id="ai-credentials" class="hidden">
@@ -102,8 +103,14 @@
                             <input type="password" id="ai-key" placeholder="Paste your API key here">
                         </div>
                         <div class="form-group">
-                            <label for="ai-model">Model Name Override (Optional)</label>
-                            <input type="text" id="ai-model" placeholder="e.g. gemini-2.5-flash or gpt-4o-mini">
+                            <label for="ai-model-select">Choose AI Model</label>
+                            <select id="ai-model-select" class="form-select">
+                                <!-- Dynamically populated by JS -->
+                            </select>
+                        </div>
+                        <div class="form-group hidden" id="custom-model-group">
+                            <label for="ai-model-custom">Custom Model Name</label>
+                            <input type="text" id="ai-model-custom" placeholder="e.g., claude-3-5-sonnet-20241022">
                         </div>
                     </div>
                 </div>

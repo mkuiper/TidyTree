@@ -399,9 +399,72 @@ def classify_with_openai(files_info: List[Dict[str, str]], guidance: str, api_ke
         print("OpenAI API classification failed:", e)
         return None
 
+def classify_with_anthropic(files_info: List[Dict[str, str]], guidance: str, api_key: str, model: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """
+    Call the Anthropic API to get a semantically classified tree structures mapping.
+    """
+    import urllib.request
+    import json
+    
+    prompt = (
+        f"You are an AI directory classification assistant. Organize the listed files to match this purpose/guidance: '{guidance}'.\n"
+        "Instructions:\n"
+        "1. For each file, decide which logical folder it belongs to. Do not suggest deep nesting (limit directories to 2 levels maximum).\n"
+        "2. Keep filenames clean but you may rename them slightly if they are chaotic (do not alter extensions).\n"
+        "3. Provide your output strictly as a JSON object matching this structure:\n"
+        "{\n"
+        "  \"relocations\": [\n"
+        "    {\n"
+        "      \"original_path\": \"original path of the file\",\n"
+        "      \"suggested_category\": \"folder name (e.g. Policy & Legislation)\",\n"
+        "      \"suggested_name\": \"new filename (keep same as original unless chaotic)\",\n"
+        "      \"reasoning\": \"brief explanation of why this file fits the category\"\n"
+        "    }\n"
+        "  ]\n"
+        "}\n\n"
+        "Files to organize:\n"
+    )
+    
+    for idx, f in enumerate(files_info):
+        prompt += f"{idx+1}. Path: '{f['path']}' | Content preview: {f['glimpse'][:200]}\n"
+        
+    url = "https://api.anthropic.com/v1/messages"
+    model_name = model if model else "claude-3-5-sonnet-latest"
+    
+    req_body = {
+        "model": model_name,
+        "max_tokens": 4000,
+        "messages": [{"role": "user", "content": prompt}]
+    }
+    
+    try:
+        data = json.dumps(req_body).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=data,
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01"
+            }
+        )
+        with urllib.request.urlopen(req, timeout=25) as response:
+            res_data = json.loads(response.read().decode("utf-8"))
+            text = res_data["content"][0]["text"]
+            text = text.strip()
+            if text.startswith("```json"):
+                text = text[7:]
+            if text.endswith("```"):
+                text = text[:-3]
+            text = text.strip()
+            return json.loads(text)
+    except Exception as e:
+        print("Anthropic API classification failed:", e)
+        return None
+
 def group_loose_files(node: TreeNode, rationales: List[Rationale], taxonomy: str = "generic", custom_guidance: Optional[str] = None, ai_provider: Optional[str] = None, ai_api_key: Optional[str] = None, ai_model: Optional[str] = None) -> TreeNode:
     """
-    Groups loose files matching built-in or AI-guided taxonomies (supporting Gemini & OpenAI).
+    Groups loose files matching built-in or AI-guided taxonomies (supporting Gemini, OpenAI & Anthropic).
     """
     if not node.is_dir or not node.children:
         return node
@@ -434,6 +497,8 @@ def group_loose_files(node: TreeNode, rationales: List[Rationale], taxonomy: str
             ai_res = classify_with_gemini(files_info, guidance, ai_api_key)
         elif ai_provider == "openai":
             ai_res = classify_with_openai(files_info, guidance, ai_api_key, model=ai_model)
+        elif ai_provider == "anthropic":
+            ai_res = classify_with_anthropic(files_info, guidance, ai_api_key, model=ai_model)
             
         if ai_res and "relocations" in ai_res:
             cat_folders = {}
