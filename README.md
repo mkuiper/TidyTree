@@ -58,6 +58,11 @@ Run scans and get structure reports directly in your terminal.
 .venv/bin/python main.py scan -p sample_disorganized_tree -d 8
 ```
 
+#### Scan with Specific Taxonomy Template (e.g. Government Agency)
+```bash
+.venv/bin/python main.py scan -p sample_disorganized_tree -t government
+```
+
 #### Markdown Format Output
 ```bash
 .venv/bin/python main.py scan -p sample_disorganized_tree -d 8 -f markdown
@@ -68,9 +73,30 @@ Run scans and get structure reports directly in your terminal.
 .venv/bin/python main.py scan -p sample_disorganized_tree -d 8 -f json
 ```
 
+#### AI Reorganization with Custom Guidance
+If you have an API key set, you can run semantic, context-aware reorganization:
+```bash
+.venv/bin/python main.py scan -p sample_disorganized_tree -g "We are a municipal team managing permits and act revisions." --provider gemini
+```
+
 ---
 
-### 2. Web Dashboard
+### 2. API Key Configuration (`.env`)
+
+You can supply API keys for Google Gemini or OpenAI GPT models using a `.env` file. TidyTree automatically searches for a `.env` file in:
+1. The target directory being scanned.
+2. The current working directory (CWD).
+3. The root of the TidyTree workspace.
+
+Example `.env` content:
+```env
+GEMINI_API_KEY=your_google_gemini_api_key_here
+OPENAI_API_KEY=your_openai_api_key_here
+```
+
+---
+
+### 3. Web Dashboard
 
 Launch the FastAPI web server to explore structures interactively:
 ```bash
@@ -78,7 +104,12 @@ Launch the FastAPI web server to explore structures interactively:
 ```
 Then navigate to **http://127.0.0.1:8000** in your browser.
 
-#### Interactive Features:
+#### Dashboard Features:
 - **Collapsible Roots**: Click any folder node to expand or collapse it.
 - **Before & After Sync**: Highlighted nodes show modified files/directories.
 - **Cross-Highlighting**: Click any row in the **Suggested Optimizations** table at the bottom to highlight the affected files in both the "Before" (red outline) and "After" (green outline) trees, automatically scrolling them into view.
+- **Help Guide Modal**: Click the **❓ Help Guide** chip at the top right to see full details on taxonomy templates (Generic, Government, Corporate, Academic) and interface features.
+- **Real-Time Directory Search**: Search filenames directly in the search bar. Non-matching files fade out, matches are highlighted in yellow, and matching folder paths automatically expand.
+- **Symbolic Views & Metrics**:
+  - Compare file counts, folder counts, and maximum nesting depths side-by-side.
+  - A visual category distribution bar displays the proportional allocation of suggested folders.

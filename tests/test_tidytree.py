@@ -1,9 +1,11 @@
+import os
 import unittest
 import tempfile
 import json
 from pathlib import Path
 from tidytree.models import TreeNode, FileMetadata, Rationale
 from tidytree.scanner import perform_scan, find_metadata_registries
+from tidytree.dotenv_loader import load_dotenv
 from tidytree.analyzer import (
     analyze_tree,
     get_category,
@@ -137,6 +139,38 @@ class TestTidyTreeCore(unittest.TestCase):
         # Verify that government-specific taxonomy folders are created
         self.assertIn("Policy & Legislation", child_names)
         self.assertIn("Finance & Procurement", child_names)
+
+    def test_load_dotenv(self):
+        # Create a mock .env file in the temp directory
+        dotenv_content = (
+            "TEST_VAR_ONE=value_one\n"
+            "TEST_VAR_TWO='value_two'\n"
+            "TEST_VAR_THREE=\"value_three\"\n"
+            "# Comment line\n"
+            "  \n"
+        )
+        
+        dotenv_path = self.base_path / ".env"
+        with open(dotenv_path, "w", encoding="utf-8") as f:
+            f.write(dotenv_content)
+            
+        # Ensure vars aren't already set
+        os.environ.pop("TEST_VAR_ONE", None)
+        os.environ.pop("TEST_VAR_TWO", None)
+        os.environ.pop("TEST_VAR_THREE", None)
+        
+        # Load dotenv
+        load_dotenv(str(self.base_path))
+        
+        # Assertions
+        self.assertEqual(os.environ.get("TEST_VAR_ONE"), "value_one")
+        self.assertEqual(os.environ.get("TEST_VAR_TWO"), "value_two")
+        self.assertEqual(os.environ.get("TEST_VAR_THREE"), "value_three")
+        
+        # Cleanup
+        os.environ.pop("TEST_VAR_ONE", None)
+        os.environ.pop("TEST_VAR_TWO", None)
+        os.environ.pop("TEST_VAR_THREE", None)
 
 if __name__ == "__main__":
     unittest.main()

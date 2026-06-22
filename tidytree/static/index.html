@@ -35,9 +35,12 @@
                 <h1>TidyTree</h1>
                 <span class="badge">Advisory Engine v0.1.0</span>
             </div>
-            <div class="safety-banner">
-                <span class="shield-icon">🛡️</span>
-                <span><strong>Read-Only Mode:</strong> Your actual files will never be altered.</span>
+            <div class="header-actions">
+                <div class="safety-banner">
+                    <span class="shield-icon">🛡️</span>
+                    <span><strong>Read-Only Mode:</strong> Your actual files will never be altered.</span>
+                </div>
+                <button id="help-trigger" class="chip">❓ Help Guide</button>
             </div>
         </header>
 
@@ -114,6 +117,60 @@
             <!-- Loading overlay or Error -->
             <div id="error-box" class="error-panel hidden"></div>
 
+            <!-- Statistics & Search Panel -->
+            <section class="stats-search-panel glass-panel hidden" id="stats-panel">
+                <div class="panel-header-row">
+                    <div class="metrics-summary">
+                        <h2>Directory Analysis Metrics</h2>
+                        <div class="metrics-grid">
+                            <div class="metric-card">
+                                <span class="metric-label">Files Count</span>
+                                <div class="metric-comparison">
+                                    <span class="metric-before" id="stat-files-before">0</span>
+                                    <span class="metric-arrow">➔</span>
+                                    <span class="metric-after" id="stat-files-after">0</span>
+                                </div>
+                            </div>
+                            <div class="metric-card">
+                                <span class="metric-label">Folders Count</span>
+                                <div class="metric-comparison">
+                                    <span class="metric-before" id="stat-folders-before">0</span>
+                                    <span class="metric-arrow">➔</span>
+                                    <span class="metric-after" id="stat-folders-after">0</span>
+                                </div>
+                            </div>
+                            <div class="metric-card">
+                                <span class="metric-label">Max Depth</span>
+                                <div class="metric-comparison">
+                                    <span class="metric-before" id="stat-depth-before">0</span>
+                                    <span class="metric-arrow">➔</span>
+                                    <span class="metric-after" id="stat-depth-after">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="search-box">
+                        <label for="search-input">Search Directory Trees</label>
+                        <div class="search-input-wrapper">
+                            <input type="text" id="search-input" placeholder="Search filenames (e.g. report)...">
+                            <span class="search-icon">🔍</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Category Distribution Charts (Symbolic view) -->
+                <div class="distribution-section">
+                    <h3>Folder Category Allocation (Suggested)</h3>
+                    <div class="distribution-bar" id="distribution-bar">
+                        <!-- Filled in dynamically by JS -->
+                    </div>
+                    <div class="distribution-legend" id="distribution-legend">
+                        <!-- Legends dynamically filled -->
+                    </div>
+                </div>
+            </section>
+
             <!-- Visualization Workspace -->
             <div class="workspace-views">
                 <!-- Original Tree Card -->
@@ -174,6 +231,44 @@
                 </div>
             </section>
         </main>
+    </div>
+
+    <!-- Help Modal Overlay -->
+    <div id="help-modal" class="modal-overlay hidden">
+        <div class="modal-card glass-panel">
+            <div class="modal-header">
+                <h2>TidyTree Help & Configuration Guide</h2>
+                <button id="close-modal-btn" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h3>Taxonomy Reference Guide</h3>
+                <div class="taxonomy-guides">
+                    <div class="guide-item">
+                        <strong>Generic (File Types)</strong>
+                        <p>Default format classification: Groups into Documents, Data & Sheets, Media, Source Code, and Archives.</p>
+                    </div>
+                    <div class="guide-item">
+                        <strong>Government Agency</strong>
+                        <p>Tailored public administration sectors: Policy & Legislation, Operations & Services, Finance & Procurement, Administration & HR, and Communications & Relations.</p>
+                    </div>
+                    <div class="guide-item">
+                        <strong>Corporate Organization</strong>
+                        <p>Standard business operational segments: Finance & Legal, Human Resources, Marketing & Sales, Product & Operations, and Engineering & Tech.</p>
+                    </div>
+                    <div class="guide-item">
+                        <strong>Academic / School</strong>
+                        <p>Optimized research structure: Research & Publications, Teaching & Courses, Administration & Departmental, and Student Portfolios.</p>
+                    </div>
+                </div>
+                
+                <h3>Feature Walkthrough</h3>
+                <ul>
+                    <li><strong>Search Bar</strong>: Filters files dynamically in both directories. Non-matching nodes are faded, matching filenames are highlighted, and parent folders auto-expand to reveal matches.</li>
+                    <li><strong>Symbolic Metrics</strong>: Compares file count, folder count, and maximum nesting depth side-by-side, displaying a visual bar chart of folder category weights.</li>
+                    <li><strong>AI Reorganization</strong>: If <code>GEMINI_API_KEY</code> or <code>OPENAI_API_KEY</code> is set in the <code>.env</code> file (or inputs), the engine utilizes Large Language Models to classify files matching your custom guidance context.</li>
+                </ul>
+            </div>
+        </div>
     </div>
 </body>
 </html>

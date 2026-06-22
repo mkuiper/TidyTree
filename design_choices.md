@@ -87,14 +87,30 @@ The Analyzer runs the scanned tree through three main simplification pipelines:
 
 ---
 
-## 4. Presentation Layers
+## 4. Environment & API Key Resolution (`dotenv_loader.py`)
+
+To simplify API key configuration when utilizing Google Gemini or OpenAI GPT models for advanced sorting:
+- **Automatic `.env` Discovery**: TidyTree checks for a `.env` file containing API keys (`GEMINI_API_KEY`, `OPENAI_API_KEY`) at three levels:
+  1. The target folder being scanned.
+  2. The current working directory (CWD) where the application is executed.
+  3. The workspace root folder (containing `main.py`).
+- **Standard Library Loading**: Parses and loads these key-value pairs directly into `os.environ` without adding heavy third-party dependencies, adhering to the project's zero-dependency-creep guideline.
+
+---
+
+## 5. Presentation Layers
 
 ### CLI (`cli.py`)
 - Headless execution.
 - Command options:
-  - `--path`: Root directory to scan.
-  - `--format`: Format of output (`text`, `json`, `markdown`).
-  - `--max-depth`: Max recursion depth (default 5).
+  - `--path` / `-p`: Root directory to scan.
+  - `--format` / `-f`: Format of output (`text`, `json`, `markdown`).
+  - `--max-depth` / `-d`: Max recursion depth (default 5).
+  - `--taxonomy` / `-t`: Structure template (e.g. `generic`, `government`, `corporate`, `academic`).
+  - `--guidance` / `-g`: Over-arching organizational guidelines (optional).
+  - `--provider`: AI reorganization provider (`none`, `gemini`, `openai`).
+  - `--api-key`: API key override.
+  - `--model`: Specific AI model override.
 - Outputs a clean text tree of the suggested hierarchy, followed by a list of rationales and a warning that no files were modified.
 
 ### Web Dashboard (`web.py` + static files)
@@ -106,3 +122,9 @@ The Analyzer runs the scanned tree through three main simplification pipelines:
   - Interactive "Before" and "After" trees displayed side-by-side.
   - Interactive node clicking/hovering highlights corresponding reorganization rationales.
   - Custom collapsible folder trees built from scratch with CSS/JS for maximum smoothness and styling freedom.
+- **Dynamic Help & Configuration Guide**: A built-in modal provides instant references for all the taxonomy templates (e.g., policy, operations, financial folders) and explains interface search/charts features.
+- **Real-Time Directory Search**: Client-side filtering fades non-matching files, outlines matches, and automatically expands parent directories to expose items matching the user's query instantly.
+- **Symbolic Views & Metrics**:
+  - A metrics bar shows side-by-side counts comparing original vs. suggested files, folders, and maximum depth.
+  - An animated horizontal bar chart illustrates the logical category weight distributions (e.g. Finance, Documents, Media) for the tidy tree structure.
+

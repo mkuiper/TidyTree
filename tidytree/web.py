@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
@@ -6,6 +7,7 @@ from pydantic import BaseModel
 from .scanner import perform_scan
 from .analyzer import analyze_tree
 from .models import TidyResult
+from .dotenv_loader import load_dotenv
 
 app = FastAPI(
     title="TidyTree Dashboard",
@@ -22,6 +24,7 @@ class ScanRequest(BaseModel):
     ai_model: Optional[str] = None
 
 @app.post("/api/scan", response_model=TidyResult)
+
 def api_scan(request: ScanRequest):
     target_path = Path(request.path)
     
@@ -43,22 +46,29 @@ def api_scan(request: ScanRequest):
         raise HTTPException(status_code=400, detail=f"Path '{target_path}' is not a directory.")
         
     try:
+        # Load environment variables from .env files
+        load_dotenv(str(target_path))
+        
         # Scan and Analyze recursively
         original_tree = perform_scan(str(target_path), max_depth=request.max_depth)
         
         # Load API key and provider from request, fallback to environment keys if none
-        import os
         provider = request.ai_provider
         api_key = request.ai_api_key
         model = request.ai_model
         
-        if (not provider or provider == "none") and not api_key:
-            if os.environ.get("GEMINI_API_KEY"):
-                provider = "gemini"
+        if not api_key:
+            if provider == "gemini":
                 api_key = os.environ.get("GEMINI_API_KEY")
-            elif os.environ.get("OPENAI_API_KEY"):
-                provider = "openai"
+            elif provider == "openai":
                 api_key = os.environ.get("OPENAI_API_KEY")
+            elif not provider or provider == "none":
+                if os.environ.get("GEMINI_API_KEY"):
+                    provider = "gemini"
+                    api_key = os.environ.get("GEMINI_API_KEY")
+                elif os.environ.get("OPENAI_API_KEY"):
+                    provider = "openai"
+                    api_key = os.environ.get("OPENAI_API_KEY")
         
         tidy_result = analyze_tree(
             original_tree,

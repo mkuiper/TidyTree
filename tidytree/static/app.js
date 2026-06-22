@@ -12,6 +12,52 @@ document.addEventListener("DOMContentLoaded", () => {
     const suggestedTreeRoot = document.getElementById("suggested-tree-root");
     const rationalesTbody = document.getElementById("rationales-tbody");
 
+    // Help Modal Elements
+    const helpTrigger = document.getElementById("help-trigger");
+    const helpModal = document.getElementById("help-modal");
+    const closeModalBtn = document.getElementById("close-modal-btn");
+
+    // Metrics Dashboard Elements
+    const statsPanel = document.getElementById("stats-panel");
+    const statFilesBefore = document.getElementById("stat-files-before");
+    const statFilesAfter = document.getElementById("stat-files-after");
+    const statFoldersBefore = document.getElementById("stat-folders-before");
+    const statFoldersAfter = document.getElementById("stat-folders-after");
+    const statDepthBefore = document.getElementById("stat-depth-before");
+    const statDepthAfter = document.getElementById("stat-depth-after");
+    const distributionBar = document.getElementById("distribution-bar");
+    const distributionLegend = document.getElementById("distribution-legend");
+    const searchInput = document.getElementById("search-input");
+
+    // Category Color Maps
+    const CATEGORY_COLORS = {
+        "Documents": "#3b82f6",
+        "Policy & Legislation": "#3b82f6",
+        "Research & Publications": "#3b82f6",
+        "Finance & Legal": "#10b981",
+        "Finance & Procurement": "#10b981",
+        "Data & Sheets": "#10b981",
+        "Media": "#ef4444",
+        "Marketing & Sales": "#ef4444",
+        "Communications & Relations": "#ef4444",
+        "Teaching & Courses": "#ef4444",
+        "Source Code": "#a855f7",
+        "Engineering & Tech": "#a855f7",
+        "Operations & Public Services": "#a855f7",
+        "Student Portfolios & Submissions": "#a855f7",
+        "Archives": "#f59e0b",
+        "Human Resources": "#f59e0b",
+        "Administration & HR": "#f59e0b",
+        "Administration & Departmental": "#f59e0b",
+        "Product & Operations": "#3b82f6",
+        "Other": "#6b7280",
+        "Unmapped": "#4b5563"
+    };
+
+    function getCategoryColor(name) {
+        return CATEGORY_COLORS[name] || "#6b7280";
+    }
+
     // State Variables
     let currentResult = null;
     let highlightedNodes = [];
@@ -23,13 +69,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Setup Quick Try chips
     document.querySelectorAll(".chip").forEach(chip => {
-        chip.addEventListener("click", () => {
-            dirPathInput.value = chip.dataset.path;
-            triggerScan();
-        });
+        if (chip.id !== "help-trigger") {
+            chip.addEventListener("click", () => {
+                dirPathInput.value = chip.dataset.path;
+                triggerScan();
+            });
+        }
     });
 
-    scanBtn.addEventListener("click", triggerScan);
+    // Bind Help Modal Toggles
+    if (helpTrigger && helpModal && closeModalBtn) {
+        helpTrigger.addEventListener("click", () => {
+            helpModal.classList.remove("hidden");
+        });
+        closeModalBtn.addEventListener("click", () => {
+            helpModal.classList.add("hidden");
+        });
+        helpModal.addEventListener("click", (e) => {
+            if (e.target === helpModal) {
+                helpModal.classList.add("hidden");
+            }
+        });
+    }
 
     // Toggle AI Credentials Inputs
     const aiProviderSelect = document.getElementById("ai-provider");
@@ -54,6 +115,16 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+
+    // Search Input Real-Time Filter Listener
+    if (searchInput) {
+        searchInput.addEventListener("input", (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            applySearchFilter(query);
+        });
+    }
+
+    scanBtn.addEventListener("click", triggerScan);
 
     function triggerScan() {
         const path = dirPathInput.value.trim();
@@ -135,44 +206,134 @@ document.addEventListener("DOMContentLoaded", () => {
         errorBox.classList.add("hidden");
     }
 
-    function countNodes(node) {
-        if (!node) return 0;
-        let count = 1; // Count self
-        if (node.is_dir && node.children) {
-            node.children.forEach(child => {
-                count += countNodes(child);
-            });
+    // Helper functions to calculate stats
+    function countStats(node, stats = { files: 0, folders: 0 }) {
+        if (!node) return stats;
+        if (node.is_dir) {
+            stats.folders += 1;
+            if (node.children) {
+                node.children.forEach(child => countStats(child, stats));
+            }
+        } else {
+            stats.files += 1;
         }
-        return count;
+        return stats;
+    }
+
+    function calculateMaxDepth(node) {
+        if (!node) return 0;
+        if (!node.is_dir || !node.children || node.children.length === 0) {
+            return 1;
+        }
+        let maxChildDepth = 0;
+        node.children.forEach(child => {
+            maxChildDepth = Math.max(maxChildDepth, calculateMaxDepth(child));
+        });
+        return 1 + maxChildDepth;
     }
 
     function renderDashboard(result) {
-        // Set item counts
-        const oCount = countNodes(result.original_tree);
-        const sCount = countNodes(result.suggested_tree);
-        origCount.textContent = `${oCount} item${oCount !== 1 ? 's' : ''}`;
-        sugCount.textContent = `${sCount} item${sCount !== 1 ? 's' : ''}`;
+        // Calculate Statistics
+        const origStats = countStats(result.original_tree, { files: 0, folders: 0 });
+        const sugStats = countStats(result.suggested_tree, { files: 0, folders: 0 });
+        // Exclude root folder counts if they match root directory node
+        origStats.folders = Math.max(0, origStats.folders - 1);
+        sugStats.folders = Math.max(0, sugStats.folders - 1);
+
+        const origDepth = calculateMaxDepth(result.original_tree);
+        const sugDepth = calculateMaxDepth(result.suggested_tree);
+
+        // Update statistics cards
+        statFilesBefore.textContent = origStats.files;
+        statFilesAfter.textContent = sugStats.files;
+        statFoldersBefore.textContent = origStats.folders;
+        statFoldersAfter.textContent = sugStats.folders;
+        statDepthBefore.textContent = origDepth;
+        statDepthAfter.textContent = sugDepth;
+
+        // Display the panel
+        statsPanel.classList.remove("hidden");
+
+        // Update tree headers items count labels
+        origCount.textContent = `${origStats.files} file${origStats.files !== 1 ? 's' : ''}, ${origStats.folders} folder${origStats.folders !== 1 ? 's' : ''}`;
+        sugCount.textContent = `${sugStats.files} file${sugStats.files !== 1 ? 's' : ''}, ${sugStats.folders} folder${sugStats.folders !== 1 ? 's' : ''}`;
         rationaleCount.textContent = `${result.rationales.length} item${result.rationales.length !== 1 ? 's' : ''}`;
 
-        // Create fast path map for lookups
-        const relocations = new Map(); // original_path -> rationale
-        const suggestedPaths = new Map(); // suggested_path -> rationale
-        
+        // Clear Search Box
+        if (searchInput) searchInput.value = "";
+
+        // Build mappings of original and suggested paths to their rationales
+        const relocations = new Map();
+        const suggestedPaths = new Map();
         result.rationales.forEach(rat => {
             relocations.set(rat.original_path, rat);
             suggestedPaths.set(rat.suggested_path, rat);
         });
 
-        // Clear existing trees
+        // Rebuild Trees
         originalTreeRoot.innerHTML = "";
         suggestedTreeRoot.innerHTML = "";
-
-        // Build Trees
         originalTreeRoot.appendChild(buildDOMTree(result.original_tree, relocations, "orig"));
         suggestedTreeRoot.appendChild(buildDOMTree(result.suggested_tree, suggestedPaths, "sug"));
 
+        // Render charts & legends
+        renderDistributionChart(result.suggested_tree);
+
         // Render Rationales Table
         renderRationalesTable(result.rationales);
+    }
+
+    function renderDistributionChart(suggestedTree) {
+        distributionBar.innerHTML = "";
+        distributionLegend.innerHTML = "";
+
+        if (!suggestedTree || !suggestedTree.children) return;
+
+        // Traverse suggested tree first-level subdirectories to count files
+        const categories = {};
+        let totalFiles = 0;
+
+        suggestedTree.children.forEach(node => {
+            if (node.is_dir) {
+                const stats = countStats(node, { files: 0, folders: 0 });
+                if (stats.files > 0) {
+                    categories[node.name] = stats.files;
+                    totalFiles += stats.files;
+                }
+            } else {
+                // Files sitting loose in the root
+                categories["Loose Files"] = (categories["Loose Files"] || 0) + 1;
+                totalFiles += 1;
+            }
+        });
+
+        if (totalFiles === 0) {
+            distributionBar.innerHTML = `<div style="padding: 0.25rem 1rem; font-size: 0.8rem; color: var(--text-muted);">No files found in directory.</div>`;
+            return;
+        }
+
+        // Draw horizontal segments and legends
+        Object.entries(categories).forEach(([name, count]) => {
+            const percentage = (count / totalFiles) * 100;
+            const color = getCategoryColor(name);
+
+            // Bar Segment
+            const segment = document.createElement("div");
+            segment.className = "dist-bar-segment";
+            segment.style.width = `${percentage}%`;
+            segment.style.backgroundColor = color;
+            segment.title = `${name}: ${count} file(s) (${percentage.toFixed(1)}%)`;
+            distributionBar.appendChild(segment);
+
+            // Legend item
+            const legendItem = document.createElement("div");
+            legendItem.className = "legend-item";
+            legendItem.innerHTML = `
+                <span class="legend-color" style="background-color: ${color};"></span>
+                <span><strong>${name}</strong>: ${count} (${percentage.toFixed(0)}%)</span>
+            `;
+            distributionLegend.appendChild(legendItem);
+        });
     }
 
     function buildDOMTree(node, rationaleMap, treeType) {
@@ -184,13 +345,12 @@ document.addEventListener("DOMContentLoaded", () => {
         header.textContent = node.name;
         header.id = `${treeType}-node-${btoa(encodeURIComponent(node.path))}`;
 
-        // Highlight nodes that undergo action
         if (treeType === "orig" && rationaleMap.has(node.path)) {
             header.classList.add("highlight-relocated");
-            header.title = `Optimization: ${rationaleMap.get(node.path).reasoning}`;
+            header.title = `Relocation: ${rationaleMap.get(node.path).reasoning}`;
         } else if (treeType === "sug" && rationaleMap.has(node.path)) {
             header.classList.add("highlight-renamed");
-            header.title = `Optimization: ${rationaleMap.get(node.path).reasoning}`;
+            header.title = `Relocation: ${rationaleMap.get(node.path).reasoning}`;
         }
 
         container.appendChild(header);
@@ -199,7 +359,6 @@ document.addEventListener("DOMContentLoaded", () => {
             const childrenContainer = document.createElement("div");
             childrenContainer.className = "tree-node-children";
 
-            // Click header to toggle children visibility
             header.addEventListener("click", (e) => {
                 e.stopPropagation();
                 childrenContainer.classList.toggle("collapsed");
@@ -228,8 +387,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         rationales.forEach(rat => {
             const row = document.createElement("tr");
-
-            // Format action tag
             const actionClass = getActionTagClass(rat.action);
             const origDisp = rat.original_path || "/";
             const sugDisp = rat.suggested_path || "/";
@@ -241,15 +398,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td>${rat.reasoning}</td>
             `;
 
-            // Hover / click handler on table rows to highlight corresponding nodes in trees
             row.addEventListener("click", () => {
-                // Clear old active row styling
                 document.querySelectorAll(".rationales-table tbody tr").forEach(r => r.classList.remove("active-row"));
                 row.classList.add("active-row");
 
                 clearHighlights();
 
-                // Highlight before node
                 const origId = `orig-node-${btoa(encodeURIComponent(rat.original_path))}`;
                 const origEl = document.getElementById(origId);
                 if (origEl) {
@@ -259,7 +413,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     highlightedNodes.push(origEl);
                 }
 
-                // Highlight after node
                 const sugId = `sug-node-${btoa(encodeURIComponent(rat.suggested_path))}`;
                 const sugEl = document.getElementById(sugId);
                 if (sugEl) {
@@ -289,5 +442,59 @@ document.addEventListener("DOMContentLoaded", () => {
             case "RENAME_AND_MOVE": return "tag-rename";
             default: return "tag-move";
         }
+    }
+
+    function applySearchFilter(query) {
+        function checkNodeMatch(element) {
+            const header = element.querySelector(":scope > .tree-node-header");
+            const childrenContainer = element.querySelector(":scope > .tree-node-children");
+            
+            const nodeName = header.textContent.toLowerCase();
+            const selfMatches = nodeName.includes(query);
+            
+            let childMatches = false;
+            if (childrenContainer) {
+                const childElements = childrenContainer.querySelectorAll(":scope > .tree-node");
+                childElements.forEach(childEl => {
+                    if (checkNodeMatch(childEl)) {
+                        childMatches = true;
+                    }
+                });
+            }
+            
+            const isVisible = selfMatches || childMatches;
+            
+            if (query === "") {
+                header.classList.remove("faded", "search-match");
+                if (childrenContainer) {
+                    // Do not force collapse, just let user toggle or keep collapsed state
+                }
+            } else {
+                if (selfMatches) {
+                    header.classList.add("search-match");
+                    header.classList.remove("faded");
+                } else if (childMatches) {
+                    header.classList.remove("faded", "search-match");
+                } else {
+                    header.classList.remove("search-match");
+                    header.classList.add("faded");
+                }
+                
+                // Auto-expand folder matches
+                if (childMatches && childrenContainer) {
+                    childrenContainer.classList.remove("collapsed");
+                    header.classList.remove("collapsed");
+                }
+            }
+            
+            return isVisible;
+        }
+
+        // Apply filters to both trees side by side
+        const origNodes = originalTreeRoot.querySelectorAll(":scope > .tree-node");
+        origNodes.forEach(node => checkNodeMatch(node));
+
+        const sugNodes = suggestedTreeRoot.querySelectorAll(":scope > .tree-node");
+        sugNodes.forEach(node => checkNodeMatch(node));
     }
 });

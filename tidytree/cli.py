@@ -1,9 +1,12 @@
+import os
 import sys
 import click
 from pathlib import Path
 from .scanner import perform_scan
 from .analyzer import analyze_tree
 from .models import TreeNode
+from .dotenv_loader import load_dotenv
+
 
 def render_ascii_tree(node: TreeNode, indent: str = "", is_last: bool = True, is_root: bool = True) -> str:
     """
@@ -53,22 +56,29 @@ def scan(path, format, max_depth, taxonomy, guidance, provider, api_key, model):
     target_path = Path(path).resolve()
     
     try:
+        # Load environment variables from .env files
+        load_dotenv(str(target_path))
+        
         # Perform scan
         original_tree = perform_scan(str(target_path), max_depth=max_depth)
         
         # Load API key and provider from inputs, fallback to environment keys if none
-        import os
         ai_provider = provider
         ai_api_key = api_key
         ai_model = model
         
-        if (not ai_provider or ai_provider == "none") and not ai_api_key:
-            if os.environ.get("GEMINI_API_KEY"):
-                ai_provider = "gemini"
+        if not ai_api_key:
+            if ai_provider == "gemini":
                 ai_api_key = os.environ.get("GEMINI_API_KEY")
-            elif os.environ.get("OPENAI_API_KEY"):
-                ai_provider = "openai"
+            elif ai_provider == "openai":
                 ai_api_key = os.environ.get("OPENAI_API_KEY")
+            elif not ai_provider or ai_provider == "none":
+                if os.environ.get("GEMINI_API_KEY"):
+                    ai_provider = "gemini"
+                    ai_api_key = os.environ.get("GEMINI_API_KEY")
+                elif os.environ.get("OPENAI_API_KEY"):
+                    ai_provider = "openai"
+                    ai_api_key = os.environ.get("OPENAI_API_KEY")
         
         # Perform analysis
         tidy_result = analyze_tree(
